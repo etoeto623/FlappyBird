@@ -101,7 +101,7 @@ public class MyFlappyGame extends ApplicationAdapter {
 		for(int i = 0; i < pipes.size; i++){
 			Pipe[] pips = pipes.get(i);
 			for(Pipe p : pips){
-				batch.draw(p.img, p.pos.x, p.pos.y, p.wight, p.height);
+				batch.draw(p.img, p.pos.x, p.pos.y, p.width, p.height);
 			}
 		}
 		batch.draw(curBird, curBird.pos.x, curBird.pos.y);
@@ -128,6 +128,11 @@ public class MyFlappyGame extends ApplicationAdapter {
 			if(camera.position.x-Gdx.graphics.getWidth()/2 > landOffset+Gdx.graphics.getWidth()){
 				landOffset += Gdx.graphics.getWidth();
 			}
+
+			if(idBirdHitPipe(blueBird, pipes)){
+				this.gameState = GameState.OVER;
+			}
+
 			// update pipes
 			if(pipes.get(pipes.size-1)[0].pos.x + pipeGap <= camera.position.x + Gdx.graphics.getWidth()/2){
 				PIPE_OFFSET += pipeGap;
@@ -142,16 +147,25 @@ public class MyFlappyGame extends ApplicationAdapter {
 
 	}
 
-	private boolean idBirdHitPipe(Bird.BirdItem bird, Array<Pipe[]> pipes){
+	private boolean idBirdHitPipe(Bird bird, Array<Pipe[]> pipes){
 		if(null == bird || null == pipes || pipes.size == 0){
 			return false;
 		}
-//		float birdRightY = bird.pos.y + bird.getRegionWidth();
-//		for(Pipe[] ps : pipes){
-//			if(){
-//
-//			}
-//		}
+		Rectangle birdRect = blueBird.getRect();
+		for(Pipe[] ps : pipes){
+			for(int i = 0; i < 2; i++){
+				Rectangle pipeRect = ps[i].getRect();
+				if(birdRect.getX() + birdRect.getWidth() <  pipeRect.getX()){
+					return false;
+				}
+				if(birdRect.getX() > pipeRect.getX()+pipeRect.getWidth()){
+					continue;
+				}
+				if(pipeRect.overlaps(birdRect)){
+					return true;
+				}
+			}
+		}
 
 		return false;
 	}

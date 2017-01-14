@@ -3,6 +3,7 @@ package me.neolong.game.flappybird.component;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 
@@ -14,6 +15,7 @@ public class Bird {
     public final static float interval = 0.15f;
     Animation animation;
     public Vector2 pos, velocity;
+    private Rectangle rect = new Rectangle();
 
     private Bird(){}
 
@@ -40,6 +42,11 @@ public class Bird {
         BirdItem item = (BirdItem)this.animation.getKeyFrame(stateTime);
         item.pos = this.pos;
         return item;
+    }
+    public Rectangle getRect(){
+        BirdItem item = this.frames.get(0);
+        this.rect.set(item.pos.x, this.pos.y, item.getRegionWidth(), item.getRegionHeight());
+        return this.rect;
     }
 
     public enum BirdType{
