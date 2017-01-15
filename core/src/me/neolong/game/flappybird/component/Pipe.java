@@ -15,6 +15,7 @@ public class Pipe {
     public TextureRegion img;
     public Vector2 pos;
     public float height, width;
+    public boolean passed = false;
     private Rectangle rect = new Rectangle();
 
     private Pipe(){}

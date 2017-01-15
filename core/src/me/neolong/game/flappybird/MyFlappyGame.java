@@ -29,19 +29,18 @@ public class MyFlappyGame extends ApplicationAdapter {
 	OrthographicCamera camera, uiCamera;
 
 	Bird yellowBird, blueBird, redBird;
-	Texture bgDay, bgNight, pipeUp, pipeDown, land;
-	Array<Pipe[]> pipes;
+	Texture bgDay, bgNight, pipeUp, pipeDown, land, tips;
+	Array<Pipe[]> pipes = new Array<Pipe[]>();
 
-	private static float ROCK_OFFSET;
 	private static float PIPE_OFFSET;
 	float stateTime = 0;
 	float landOffset = 0;
 	float pipeGap = 0;
-	GameState gameState = GameState.RUNNING;
+	int score = 0;
+	GameState gameState = GameState.LAUNCHED;
 
 	Bird.BirdItem curBird;
-	Rectangle birdRect;
-	
+
 	@Override
 	public void create () {
 		batch = new SpriteBatch();
@@ -52,8 +51,6 @@ public class MyFlappyGame extends ApplicationAdapter {
 		uiCamera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		uiCamera.update();
 
-		ROCK_OFFSET = Gdx.graphics.getWidth()/2;
-		PIPE_OFFSET = Gdx.graphics.getWidth()/2;
 		pipeGap = Gdx.graphics.getWidth()/PIPES_PER_SCREEN;
 
 		bgDay = new Texture("bg_day.png");
@@ -61,22 +58,27 @@ public class MyFlappyGame extends ApplicationAdapter {
 		pipeUp = new Texture("pipe_down.png");
 		pipeDown = new Texture("pipe_up.png");
 		land = new Texture("land.png");
+		tips = new Texture("tutorial.png");
 
 		yellowBird = Bird.getBird(Bird.BirdType.YELLOW);
 		blueBird = Bird.getBird(Bird.BirdType.BLUE);
 		redBird = Bird.getBird(Bird.BirdType.RED);
-
-		pipes = new Array<Pipe[]>();
-		for(int i = 1; i <= PIPES_PER_SCREEN; i++){
-			PIPE_OFFSET += pipeGap;
-			pipes.add(Pipe.getPipes(land.getHeight() - H_OFFSET, Gdx.graphics.getHeight(), PIPE_OFFSET, pipeUp, pipeDown, yellowBird.getKeyFrame(1).getRegionHeight()));
-		}
 
 		resetGame();
 	}
 	private void resetGame(){
 		yellowBird.pos = blueBird.pos = redBird.pos = new Vector2(Gdx.graphics.getWidth()/4, Gdx.graphics.getHeight()/2);
 		yellowBird.velocity = blueBird.velocity = redBird.velocity = new Vector2(Gdx.graphics.getWidth()/VELOCITY_X, 0);
+		PIPE_OFFSET = Gdx.graphics.getWidth()/2;
+		landOffset = 0;
+		score = 0;
+
+		pipes.clear();
+		for(int i = 1; i <= PIPES_PER_SCREEN; i++){
+			PIPE_OFFSET += pipeGap;
+			pipes.add(Pipe.getPipes(land.getHeight() - H_OFFSET, Gdx.graphics.getHeight(), PIPE_OFFSET, pipeUp, pipeDown, yellowBird.getKeyFrame(1).getRegionHeight()));
+		}
+		camera.position.x = Gdx.graphics.getWidth()/2;
 	}
 
 	@Override
@@ -91,6 +93,9 @@ public class MyFlappyGame extends ApplicationAdapter {
 		batch.setProjectionMatrix(uiCamera.combined);
 		batch.begin();
 		batch.draw(bgDay, 0, 0, Gdx.graphics.getHeight(), Gdx.graphics.getHeight());
+		if(gameState == GameState.LAUNCHED){
+			batch.draw(tips, (Gdx.graphics.getWidth()-tips.getWidth())/2, (Gdx.graphics.getHeight()-tips.getHeight())/2);
+		}
 		batch.end();
 
 		camera.position.x = curBird.pos.x+Gdx.graphics.getWidth()/4;
@@ -104,16 +109,17 @@ public class MyFlappyGame extends ApplicationAdapter {
 				batch.draw(p.img, p.pos.x, p.pos.y, p.width, p.height);
 			}
 		}
-		batch.draw(curBird, curBird.pos.x, curBird.pos.y);
+		batch.draw(curBird, curBird.pos.x, curBird.pos.y, curBird.getRegionWidth()/2, curBird.getRegionHeight()/2, curBird.getRegionWidth(), curBird.getRegionHeight(), 1, 1, blueBird.angle );
 		// draw land
 		batch.draw(land, landOffset, 0, Gdx.graphics.getWidth(), land.getHeight());
 		batch.draw(land, landOffset+Gdx.graphics.getWidth(), 0, Gdx.graphics.getWidth(), land.getHeight());
 		batch.end();
 	}
 	private void updateGame(float deltaTime){
+		transformState();
+		curBird = blueBird.getKeyFrame(stateTime);
 		if(gameState == GameState.RUNNING){
-			curBird = blueBird.getKeyFrame(stateTime);
-			if(isGameOver()){
+			if(isHitBoundary()){
 				gameState = GameState.OVER;
 			}
 			if(Gdx.input.isKeyJustPressed(Input.Keys.SPACE)){
@@ -121,8 +127,9 @@ public class MyFlappyGame extends ApplicationAdapter {
 			}else{
 				blueBird.velocity.add(GRAVITY);
 			}
+			calcBirdRotation();
 			blueBird.pos.mulAdd(blueBird.velocity, deltaTime);
-			blueBird.pos.y = Math.min(Math.max(blueBird.pos.y, land.getHeight()-H_OFFSET),Gdx.graphics.getHeight()-curBird.getRegionHeight()+H_OFFSET   );
+			blueBird.pos.y = Math.min(Math.max(blueBird.pos.y, land.getHeight()-H_OFFSET),Gdx.graphics.getHeight()-curBird.getRegionHeight()+H_OFFSET);
 
 			// update land
 			if(camera.position.x-Gdx.graphics.getWidth()/2 > landOffset+Gdx.graphics.getWidth()){
@@ -141,12 +148,46 @@ public class MyFlappyGame extends ApplicationAdapter {
 			if(pipes.get(0)[0].pos.x+pipeUp.getWidth() <= camera.position.x-Gdx.graphics.getWidth()/2){
 				pipes.removeIndex(0);
 			}
+		}else if(gameState == GameState.OVER){
+			// fall down the bird
+			blueBird.velocity.add(GRAVITY);
+			blueBird.pos.mulAdd(blueBird.velocity, deltaTime);
+			blueBird.pos.y = Math.min(Math.max(blueBird.pos.y, land.getHeight()-H_OFFSET),Gdx.graphics.getHeight()-curBird.getRegionHeight()+H_OFFSET   );
+			calcBirdRotation();
+			if(isHitBoundary()){
+				gameState = GameState.SHOW_SCORE;
+			}
 		}
 	}
-	private void handInput(){
-
+	private void transformState(){
+		if(Gdx.input.isKeyJustPressed(Input.Keys.SPACE)){
+			if(gameState == GameState.LAUNCHED){
+				gameState = GameState.RUNNING;
+			}
+			if(gameState == GameState.SHOW_SCORE){
+				resetGame();
+				gameState = GameState.RUNNING;
+			}
+		}
+	}
+	private void stopBird(){
+		blueBird.velocity.x = blueBird.velocity.y = 0;
+	}
+	private void calcBirdRotation(){
+		if(blueBird.velocity.y > 0){
+			blueBird.angle = Math.max(blueBird.angle,0);
+			blueBird.angle++;
+			blueBird.angle = Math.min(30, blueBird.angle);
+		}else if(blueBird.velocity.y == 0){
+			blueBird.angle = 0;
+		}else{
+			blueBird.angle = Math.min(blueBird.angle, 0);
+			blueBird.angle-=1.5;
+			blueBird.angle = Math.max(-80, blueBird.angle);
+		}
 	}
 
+	boolean scoreHasAdd = false;
 	private boolean idBirdHitPipe(Bird bird, Array<Pipe[]> pipes){
 		if(null == bird || null == pipes || pipes.size == 0){
 			return false;
@@ -154,14 +195,27 @@ public class MyFlappyGame extends ApplicationAdapter {
 		Rectangle birdRect = blueBird.getRect();
 		for(Pipe[] ps : pipes){
 			for(int i = 0; i < 2; i++){
+				if(ps[i].passed){
+					continue;
+				}
 				Rectangle pipeRect = ps[i].getRect();
+				// 鸟在管子后面
 				if(birdRect.getX() + birdRect.getWidth() <  pipeRect.getX()){
+					scoreHasAdd = false;
 					return false;
 				}
+				//
 				if(birdRect.getX() > pipeRect.getX()+pipeRect.getWidth()){
+					if(!scoreHasAdd){
+						score++;
+						System.out.println(score);
+						scoreHasAdd = true;
+					}
+					ps[i].passed = true;
 					continue;
 				}
 				if(pipeRect.overlaps(birdRect)){
+					stopBird();
 					return true;
 				}
 			}
@@ -169,8 +223,9 @@ public class MyFlappyGame extends ApplicationAdapter {
 
 		return false;
 	}
-	public boolean isGameOver(){
+	public boolean isHitBoundary(){
 		if(blueBird.pos.y <= land.getHeight()-H_OFFSET || blueBird.pos.y >= Gdx.graphics.getHeight()-curBird.getRegionHeight()+H_OFFSET){
+			stopBird();
 			return true;
 		}
 		return false;
@@ -184,6 +239,6 @@ public class MyFlappyGame extends ApplicationAdapter {
 	}
 
 	public enum GameState{
-		READY, RUNNING, PAUSE, OVER;
+		LAUNCHED, READY, RUNNING, PAUSE, OVER, SHOW_SCORE;
 	}
 }

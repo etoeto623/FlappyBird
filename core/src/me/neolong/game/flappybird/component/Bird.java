@@ -16,6 +16,7 @@ public class Bird {
     Animation animation;
     public Vector2 pos, velocity;
     private Rectangle rect = new Rectangle();
+    public float angle = 0;
 
     private Bird(){}
 
