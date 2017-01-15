@@ -11,7 +11,7 @@ import com.badlogic.gdx.math.Vector2;
  */
 public class Pipe {
     private final static int MAX_Y = 8;
-    private final static float GAP = 3;
+    private final static float GAP = 5;
     public TextureRegion img;
     public Vector2 pos;
     public float height, width;

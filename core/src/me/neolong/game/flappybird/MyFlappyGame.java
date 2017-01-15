@@ -23,7 +23,7 @@ public class MyFlappyGame extends ApplicationAdapter {
 	private final static float PULSE_UP = 300;
 	private final static int PIPES_PER_SCREEN = 2;
 	private final static int VELOCITY_X = 4;
-	private final static int H_OFFSET = 12;
+	private final static int H_OFFSET = 0;
 
 	SpriteBatch batch;
 	OrthographicCamera camera, uiCamera;
@@ -53,7 +53,7 @@ public class MyFlappyGame extends ApplicationAdapter {
 		uiCamera.update();
 
 		ROCK_OFFSET = Gdx.graphics.getWidth()/2;
-		PIPE_OFFSET = 0;
+		PIPE_OFFSET = Gdx.graphics.getWidth()/2;
 		pipeGap = Gdx.graphics.getWidth()/PIPES_PER_SCREEN;
 
 		bgDay = new Texture("bg_day.png");
