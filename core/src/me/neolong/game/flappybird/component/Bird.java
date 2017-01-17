@@ -12,7 +12,6 @@ import com.badlogic.gdx.utils.Array;
  */
 public class Bird {
     private Array<BirdItem> frames = new Array<BirdItem>();
-    public final static float interval = 0.15f;
     Animation animation;
     public Vector2 pos, velocity;
     private Rectangle rect = new Rectangle();

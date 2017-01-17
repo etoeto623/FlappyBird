@@ -17,6 +17,7 @@ import com.badlogic.gdx.utils.Array;
 
 import me.neolong.game.flappybird.component.Bird;
 import me.neolong.game.flappybird.component.Pipe;
+import me.neolong.game.flappybird.component.ScoreFactory;
 
 public class MyFlappyGame extends ApplicationAdapter {
 	private final static Vector2 GRAVITY = new Vector2(0, -20);
@@ -37,6 +38,7 @@ public class MyFlappyGame extends ApplicationAdapter {
 	float landOffset = 0;
 	float pipeGap = 0;
 	int score = 0;
+	Vector2 scoreCenter;
 	GameState gameState = GameState.LAUNCHED;
 
 	Bird.BirdItem curBird;
@@ -52,6 +54,7 @@ public class MyFlappyGame extends ApplicationAdapter {
 		uiCamera.update();
 
 		pipeGap = Gdx.graphics.getWidth()/PIPES_PER_SCREEN;
+		scoreCenter = new Vector2(Gdx.graphics.getWidth()/2, Gdx.graphics.getHeight()*3/4);
 
 		bgDay = new Texture("bg_day.png");
 		bgNight = new Texture("bg_night.png");
@@ -114,6 +117,13 @@ public class MyFlappyGame extends ApplicationAdapter {
 		batch.draw(land, landOffset, 0, Gdx.graphics.getWidth(), land.getHeight());
 		batch.draw(land, landOffset+Gdx.graphics.getWidth(), 0, Gdx.graphics.getWidth(), land.getHeight());
 		batch.end();
+
+		batch.setProjectionMatrix(uiCamera.combined);
+		batch.begin();
+		if(gameState == GameState.RUNNING || gameState == GameState.OVER){
+			ScoreFactory.getScore(score, scoreCenter).draw(batch);
+		}
+		batch.end();
 	}
 	private void updateGame(float deltaTime){
 		transformState();
@@ -122,7 +132,7 @@ public class MyFlappyGame extends ApplicationAdapter {
 			if(isHitBoundary()){
 				gameState = GameState.OVER;
 			}
-			if(Gdx.input.isKeyJustPressed(Input.Keys.SPACE)){
+			if(Gdx.input.isKeyJustPressed(Input.Keys.SPACE) || Gdx.input.justTouched()){
 				blueBird.velocity.y = PULSE_UP;
 			}else{
 				blueBird.velocity.add(GRAVITY);
@@ -160,7 +170,7 @@ public class MyFlappyGame extends ApplicationAdapter {
 		}
 	}
 	private void transformState(){
-		if(Gdx.input.isKeyJustPressed(Input.Keys.SPACE)){
+		if(Gdx.input.isKeyJustPressed(Input.Keys.SPACE) || Gdx.input.justTouched()){
 			if(gameState == GameState.LAUNCHED){
 				gameState = GameState.RUNNING;
 			}
@@ -208,7 +218,6 @@ public class MyFlappyGame extends ApplicationAdapter {
 				if(birdRect.getX() > pipeRect.getX()+pipeRect.getWidth()){
 					if(!scoreHasAdd){
 						score++;
-						System.out.println(score);
 						scoreHasAdd = true;
 					}
 					ps[i].passed = true;
