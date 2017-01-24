@@ -25,6 +25,8 @@ public class ScoreFactory {
 
     private static Score cachedScore;
     private static int _score = -1;
+    private static float _x = -1;
+    private static float _y = -1;
 
     public static void dispose(){
         for(Texture t : numberImgs){
@@ -33,9 +35,11 @@ public class ScoreFactory {
     }
 
     public static Score getScore(int score, Vector2 center){
-        if(score != _score){
+        if(score != _score || _x!=center.x || _y!=center.y){
             cachedScore = new Score(score, center, new Rectangle(0,0,numberImgs[0].getWidth(),numberImgs[0].getHeight()));
             _score = score;
+            _x = center.x;
+            _y = center.y;
         }
         return cachedScore;
     }

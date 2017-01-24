@@ -30,7 +30,8 @@ public class MyFlappyGame extends ApplicationAdapter {
 	OrthographicCamera camera, uiCamera;
 
 	Bird yellowBird, blueBird, redBird;
-	Texture bgDay, bgNight, pipeUp, pipeDown, land, tips;
+	Texture bgDay, bgNight, pipeUp, pipeDown, land, tips, scorePanel;
+	Texture pauseIcon;
 	Array<Pipe[]> pipes = new Array<Pipe[]>();
 
 	private static float PIPE_OFFSET;
@@ -62,6 +63,8 @@ public class MyFlappyGame extends ApplicationAdapter {
 		pipeDown = new Texture("pipe_up.png");
 		land = new Texture("land.png");
 		tips = new Texture("tutorial.png");
+		scorePanel = new Texture("score_panel.png");
+		pauseIcon = new Texture("button_pause.png");
 
 		yellowBird = Bird.getBird(Bird.BirdType.YELLOW);
 		blueBird = Bird.getBird(Bird.BirdType.BLUE);
@@ -97,7 +100,7 @@ public class MyFlappyGame extends ApplicationAdapter {
 		batch.begin();
 		batch.draw(bgDay, 0, 0, Gdx.graphics.getHeight(), Gdx.graphics.getHeight());
 		if(gameState == GameState.LAUNCHED){
-			batch.draw(tips, (Gdx.graphics.getWidth()-tips.getWidth())/2, (Gdx.graphics.getHeight()-tips.getHeight())/2);
+			batch.draw(tips, (Gdx.graphics.getWidth() - tips.getWidth()) / 2, (Gdx.graphics.getHeight() - tips.getHeight()) / 2);
 		}
 		batch.end();
 
@@ -115,13 +118,24 @@ public class MyFlappyGame extends ApplicationAdapter {
 		batch.draw(curBird, curBird.pos.x, curBird.pos.y, curBird.getRegionWidth()/2, curBird.getRegionHeight()/2, curBird.getRegionWidth(), curBird.getRegionHeight(), 1, 1, blueBird.angle );
 		// draw land
 		batch.draw(land, landOffset, 0, Gdx.graphics.getWidth(), land.getHeight());
-		batch.draw(land, landOffset+Gdx.graphics.getWidth(), 0, Gdx.graphics.getWidth(), land.getHeight());
+		batch.draw(land, landOffset + Gdx.graphics.getWidth(), 0, Gdx.graphics.getWidth(), land.getHeight());
 		batch.end();
 
 		batch.setProjectionMatrix(uiCamera.combined);
 		batch.begin();
 		if(gameState == GameState.RUNNING || gameState == GameState.OVER){
 			ScoreFactory.getScore(score, scoreCenter).draw(batch);
+		}
+		if(gameState == GameState.SHOW_SCORE){
+			Vector2 originPoint = new Vector2((Gdx.graphics.getWidth() - scorePanel.getWidth()) / 2,
+					(Gdx.graphics.getHeight() - scorePanel.getHeight()) / 2);
+			batch.draw(scorePanel, originPoint.x, originPoint.y);
+			ScoreFactory.getScore(score,new Vector2(originPoint.x+scorePanel.getWidth()-50,
+				originPoint.y+scorePanel.getHeight()-34)).draw(batch);
+		}
+		if(gameState == GameState.PAUSE){
+			batch.draw(pauseIcon, (Gdx.graphics.getWidth()-pauseIcon.getWidth())/2,
+						(Gdx.graphics.getHeight()-pauseIcon.getHeight())/2);
 		}
 		batch.end();
 	}
@@ -173,10 +187,16 @@ public class MyFlappyGame extends ApplicationAdapter {
 		if(Gdx.input.isKeyJustPressed(Input.Keys.SPACE) || Gdx.input.justTouched()){
 			if(gameState == GameState.LAUNCHED){
 				gameState = GameState.RUNNING;
-			}
-			if(gameState == GameState.SHOW_SCORE){
+			}else if(gameState == GameState.SHOW_SCORE){
 				resetGame();
 				gameState = GameState.RUNNING;
+			}else if(gameState == GameState.PAUSE){
+				gameState = GameState.RUNNING;
+			}
+		}
+		if(Gdx.input.isKeyJustPressed(Input.Keys.P)){
+			if(gameState == GameState.RUNNING){
+				gameState = GameState.PAUSE;
 			}
 		}
 	}
