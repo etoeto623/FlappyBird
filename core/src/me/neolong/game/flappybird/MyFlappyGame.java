@@ -6,11 +6,7 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureAtlas;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
@@ -18,6 +14,7 @@ import com.badlogic.gdx.utils.Array;
 import me.neolong.game.flappybird.component.Bird;
 import me.neolong.game.flappybird.component.Pipe;
 import me.neolong.game.flappybird.component.ScoreFactory;
+import me.neolong.game.flappybird.util.UserDataUtil;
 
 public class MyFlappyGame extends ApplicationAdapter {
 	private final static Vector2 GRAVITY = new Vector2(0, -20);
@@ -25,13 +22,14 @@ public class MyFlappyGame extends ApplicationAdapter {
 	private final static int PIPES_PER_SCREEN = 2;
 	private final static int VELOCITY_X = 4;
 	private final static int H_OFFSET = 0;
+	private final static float SPLASH_TIME = 2;
 
 	SpriteBatch batch;
 	OrthographicCamera camera, uiCamera;
 
 	Bird yellowBird, blueBird, redBird;
 	Texture bgDay, bgNight, pipeUp, pipeDown, land, tips, scorePanel;
-	Texture pauseIcon;
+	Texture pauseIcon, flappyWord;
 	Array<Pipe[]> pipes = new Array<Pipe[]>();
 
 	private static float PIPE_OFFSET;
@@ -65,12 +63,15 @@ public class MyFlappyGame extends ApplicationAdapter {
 		tips = new Texture("tutorial.png");
 		scorePanel = new Texture("score_panel.png");
 		pauseIcon = new Texture("button_pause.png");
+		flappyWord = new Texture("title.png");
 
 		yellowBird = Bird.getBird(Bird.BirdType.YELLOW);
 		blueBird = Bird.getBird(Bird.BirdType.BLUE);
 		redBird = Bird.getBird(Bird.BirdType.RED);
 
 		resetGame();
+
+		gameState = GameState.LAUNCHING;
 	}
 	private void resetGame(){
 		yellowBird.pos = blueBird.pos = redBird.pos = new Vector2(Gdx.graphics.getWidth()/4, Gdx.graphics.getHeight()/2);
@@ -78,6 +79,7 @@ public class MyFlappyGame extends ApplicationAdapter {
 		PIPE_OFFSET = Gdx.graphics.getWidth()/2;
 		landOffset = 0;
 		score = 0;
+		stateTime = 0;
 
 		pipes.clear();
 		for(int i = 1; i <= PIPES_PER_SCREEN; i++){
@@ -93,7 +95,9 @@ public class MyFlappyGame extends ApplicationAdapter {
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
 		float deltaTime = Gdx.graphics.getDeltaTime();
-		stateTime += deltaTime;
+		if(gameState == GameState.RUNNING || gameState == GameState.LAUNCHING){
+			stateTime += deltaTime;
+		}
 		updateGame(deltaTime);
 
 		batch.setProjectionMatrix(uiCamera.combined);
@@ -104,22 +108,24 @@ public class MyFlappyGame extends ApplicationAdapter {
 		}
 		batch.end();
 
-		camera.position.x = curBird.pos.x+Gdx.graphics.getWidth()/4;
-		camera.update();
-		batch.setProjectionMatrix(camera.combined);
-		batch.begin();
-		// draw pipes
-		for(int i = 0; i < pipes.size; i++){
-			Pipe[] pips = pipes.get(i);
-			for(Pipe p : pips){
-				batch.draw(p.img, p.pos.x, p.pos.y, p.width, p.height);
+		if(gameState != GameState.LAUNCHING){
+			camera.position.x = curBird.pos.x+Gdx.graphics.getWidth()/4;
+			camera.update();
+			batch.setProjectionMatrix(camera.combined);
+			batch.begin();
+			// draw pipes
+			for(int i = 0; i < pipes.size; i++){
+				Pipe[] pips = pipes.get(i);
+				for(Pipe p : pips){
+					batch.draw(p.img, p.pos.x, p.pos.y, p.width, p.height);
+				}
 			}
+			batch.draw(curBird, curBird.pos.x, curBird.pos.y, curBird.getRegionWidth()/2, curBird.getRegionHeight()/2, curBird.getRegionWidth(), curBird.getRegionHeight(), 1, 1, blueBird.angle );
+			// draw land
+			batch.draw(land, landOffset, 0, Gdx.graphics.getWidth(), land.getHeight());
+			batch.draw(land, landOffset + Gdx.graphics.getWidth(), 0, Gdx.graphics.getWidth(), land.getHeight());
+			batch.end();
 		}
-		batch.draw(curBird, curBird.pos.x, curBird.pos.y, curBird.getRegionWidth()/2, curBird.getRegionHeight()/2, curBird.getRegionWidth(), curBird.getRegionHeight(), 1, 1, blueBird.angle );
-		// draw land
-		batch.draw(land, landOffset, 0, Gdx.graphics.getWidth(), land.getHeight());
-		batch.draw(land, landOffset + Gdx.graphics.getWidth(), 0, Gdx.graphics.getWidth(), land.getHeight());
-		batch.end();
 
 		batch.setProjectionMatrix(uiCamera.combined);
 		batch.begin();
@@ -128,14 +134,26 @@ public class MyFlappyGame extends ApplicationAdapter {
 		}
 		if(gameState == GameState.SHOW_SCORE){
 			Vector2 originPoint = new Vector2((Gdx.graphics.getWidth() - scorePanel.getWidth()) / 2,
-					(Gdx.graphics.getHeight() - scorePanel.getHeight()) / 2);
+					(Gdx.graphics.getHeight() - scorePanel.getHeight()) / 1.5f);
 			batch.draw(scorePanel, originPoint.x, originPoint.y);
 			ScoreFactory.getScore(score,new Vector2(originPoint.x+scorePanel.getWidth()-50,
 				originPoint.y+scorePanel.getHeight()-34)).draw(batch);
+			ScoreFactory.getScore(getMaxScore(), new Vector2(originPoint.x+scorePanel.getWidth()-50,
+					originPoint.y+scorePanel.getHeight()-80)).draw(batch);
 		}
 		if(gameState == GameState.PAUSE){
 			batch.draw(pauseIcon, (Gdx.graphics.getWidth()-pauseIcon.getWidth())/2,
 						(Gdx.graphics.getHeight()-pauseIcon.getHeight())/2);
+		}
+		if(gameState == GameState.LAUNCHING){
+			batch.draw(bgDay, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+			batch.draw(flappyWord, (Gdx.graphics.getWidth() - flappyWord.getWidth()) / 2,
+					(Gdx.graphics.getHeight() - flappyWord.getHeight()) / 2);
+			if(stateTime > SPLASH_TIME){
+				gameState = GameState.LAUNCHED;
+				stateTime = 0;
+				updateGame(stateTime);
+			}
 		}
 		batch.end();
 	}
@@ -160,7 +178,7 @@ public class MyFlappyGame extends ApplicationAdapter {
 				landOffset += Gdx.graphics.getWidth();
 			}
 
-			if(idBirdHitPipe(blueBird, pipes)){
+			if(isBirdHitPipe(blueBird, pipes)){
 				this.gameState = GameState.OVER;
 			}
 
@@ -218,7 +236,7 @@ public class MyFlappyGame extends ApplicationAdapter {
 	}
 
 	boolean scoreHasAdd = false;
-	private boolean idBirdHitPipe(Bird bird, Array<Pipe[]> pipes){
+	private boolean isBirdHitPipe(Bird bird, Array<Pipe[]> pipes){
 		if(null == bird || null == pipes || pipes.size == 0){
 			return false;
 		}
@@ -259,7 +277,14 @@ public class MyFlappyGame extends ApplicationAdapter {
 		}
 		return false;
 	}
-
+	private int getMaxScore(){
+		int maxRecord = UserDataUtil.getMaxScore();
+		if(score > maxRecord){
+			UserDataUtil.setMaxScore(score);
+			maxRecord = score;
+		}
+		return maxRecord;
+	}
 
 	@Override
 	public void dispose () {
@@ -268,6 +293,6 @@ public class MyFlappyGame extends ApplicationAdapter {
 	}
 
 	public enum GameState{
-		LAUNCHED, READY, RUNNING, PAUSE, OVER, SHOW_SCORE;
+		LAUNCHING, LAUNCHED, READY, RUNNING, PAUSE, OVER, SHOW_SCORE;
 	}
 }
